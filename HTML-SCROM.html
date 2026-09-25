@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML to SCORM Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .upload-zone { transition: all 0.3s ease; }
+        .upload-zone.dragover { background-color: #eff6ff; border-color: #3b82f6; }
+        .progress-bar { width: 0%; transition: width 0.3s ease; }
+        .step-indicator { 
+            display: flex; 
+            gap: 20px; 
+            margin: 20px 0;
+        }
+        .step-item {
+            text-align: center;
+        }
+        .step-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            color: #374151;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .step-item.active .step-number {
+            background: #3b82f6;
+            color: white;
+        }
+        .step-item.completed .step-number {
+            background: #10b981;
+            color: white;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
+    
+    <div class="container mx-auto max-w-5xl p-4 py-8">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="p-3 bg-blue-100 rounded-lg">
+                    <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">HTML to SCORM Converter</h1>
+                    <p class="text-gray-600">Chuyển đổi file HTML thành định dạng SCORM cho Elearning</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Converter -->
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            
+            <!-- Step 1: Upload HTML File -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white font-bold">1</span>
+                    Tải lên File HTML
+                </h2>
+                
+                <div id="uploadZone" class="upload-zone border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 bg-gray-50">
+                    <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <p class="text-lg font-semibold text-gray-700 mb-1">Kéo và thả file HTML hoặc click để chọn</p>
+                    <p class="text-sm text-gray-500">Hỗ trợ .html, .htm</p>
+                    <input type="file" id="htmlFile" accept=".html,.htm" class="hidden" />
+                </div>
+                
+                <div id="fileInfo" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg hidden">
+                    <p class="text-green-800"><strong>✓ File được tải lên:</strong> <span id="fileName"></span></p>
+                </div>
+                <div id="uploadError" class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg hidden" role="alert">
+                    <p class="text-red-800"><strong>Không thể tải file:</strong> <span id="uploadErrorMessage"></span></p>
+                </div>
+            </div>
+
+            <!-- Step 2: SCORM Settings -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white font-bold">2</span>
+                    Cài Đặt SCORM
+                </h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Phiên Bản SCORM</label>
+                        <select id="scormVersion" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="1.2">SCORM 1.2 (Khuyến Nghị)</option>
+                           <!-- <option value="2004">SCORM 2004 4th Edition</option> -->
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="trackCompletion" checked class="w-4 h-4" />
+                            <span class="text-sm text-gray-700">Theo Dõi Hoàn Thành</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="trackScore" checked class="w-4 h-4" />
+                            <span class="text-sm text-gray-700">Theo Dõi Điểm Số</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="trackTime" checked class="w-4 h-4" />
+                            <span class="text-sm text-gray-700">Theo Dõi Thời Gian</span>
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Điểm Tối Đa</label>
+                            <input type="number" id="maxScore" value="100" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Độ Lặp Lại</label>
+                            <select id="masterySetting" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="0">Không Giới Hạn</option>
+                                <option value="1">Chỉ 1 Lần</option>
+                                <option value="2">Tối Đa 2 Lần</option>
+                                <option value="3">Tối Đa 3 Lần</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Generate -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white font-bold">3</span>
+                    Tạo Gói SCORM
+                </h2>
+                
+                <div id="progressContainer" class="hidden mb-4">
+                    <div class="bg-gray-200 rounded-lg h-3 overflow-hidden mb-2">
+                        <div id="progressBar" class="progress-bar bg-blue-500 h-full"></div>
+                    </div>
+                    <p id="progressText" class="text-sm text-gray-600">Đang xử lý...</p>
+                </div>
+
+                <button id="convertBtn" onclick="convertToScorm()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition transform hover:scale-105 active:scale-95">
+                    <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                    </svg>
+                    Tạo Gói SCORM
+                </button>
+
+                <div id="successContainer" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg hidden">
+                    <div class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <div>
+                            <h3 class="font-bold text-green-800">✓ Tạo Thành Công!</h3>
+                            <p class="text-sm text-green-700 mt-1">Gói SCORM của bạn đã được tạo và tải về. Bạn có thể import vào Elearning.</p>
+                            <div class="mt-3 space-y-2">
+                                <button id="downloadBtn" onclick="downloadScorm()" class="block w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    📥 Tải Về File SCORM
+                                </button>
+                                <button onclick="resetForm()" class="block w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition">
+                                    🔄 Chuyển Đổi File Khác
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="mt-12 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 class="font-bold text-blue-900 mb-3">📋 Hướng Dẫn Sử Dụng Trên Elearning</h3>
+                <ol class="text-sm text-blue-800 space-y-2 ml-4 list-decimal">
+                    <li>Đăng nhập vào Elearning với tư cách giáo viên</li>
+                    <li>Vào khóa học → Bật chế độ chỉnh sửa</li>
+                    <li>Click "Thêm hoạt động hoặc tài nguyên" → Chọn "SCORM package"</li>
+                    <li>Upload file ZIP được tạo từ công cụ này</li>
+                    <li>Điều chỉnh các cài đặt nếu cần (điểm số, hoàn thành, v.v.)</li>
+                    <li>Lưu và hiển thị cho học sinh</li>
+                </ol>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let htmlFileContent = null;
+        let htmlFileName = null;
+        let scormPackage = null;
+
+        // Setup file upload
+        const uploadZone = document.getElementById('uploadZone');
+        const htmlFile = document.getElementById('htmlFile');
+        let dragDepth = 0;
+
+        uploadZone.addEventListener('click', () => htmlFile.click());
+
+        uploadZone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            dragDepth += 1;
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+
+        uploadZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dragDepth = Math.max(0, dragDepth - 1);
+            if (dragDepth === 0) {
+                uploadZone.classList.remove('dragover');
+            }
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragDepth = 0;
+            uploadZone.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        htmlFile.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            clearUploadError();
+            const fileName = file && typeof file.name === 'string' ? file.name : '';
+            const isHtmlFile = /\.(html?|HTML?)$/i.test(fileName);
+
+            if (!file || !isHtmlFile) {
+                showUploadError('Vui lòng chọn file có phần mở rộng .html hoặc .htm.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (typeof e.target.result !== 'string') {
+                    showUploadError('Không thể đọc nội dung file HTML.');
+                    return;
+                }
+                htmlFileContent = e.target.result;
+                htmlFileName = fileName;
+                document.getElementById('fileName').textContent = fileName;
+                document.getElementById('fileInfo').classList.remove('hidden');
+            };
+            reader.onerror = () => {
+                htmlFileContent = null;
+                showUploadError('Đã xảy ra lỗi khi đọc file. Vui lòng thử lại.');
+            };
+            reader.readAsText(file);
+        }
+
+        function showUploadError(message) {
+            htmlFileContent = null;
+            document.getElementById('fileInfo').classList.add('hidden');
+            document.getElementById('uploadErrorMessage').textContent = message;
+            document.getElementById('uploadError').classList.remove('hidden');
+        }
+
+        function clearUploadError() {
+            document.getElementById('uploadError').classList.add('hidden');
+            document.getElementById('uploadErrorMessage').textContent = '';
+        }
+
+        function convertToScorm() {
+            if (!htmlFileContent) {
+                alert('⚠️ Vui lòng tải lên file HTML');
+                return;
+            }
+
+            const titleMatch = htmlFileContent.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+            const courseTitle = titleMatch ? titleMatch[1].trim() : 'SCORM Course';
+            const courseId = (htmlFileName || 'course001')
+                .replace(/\.[^.]+$/, '')
+                .replace(/[^a-zA-Z0-9_-]+/g, '-')
+                .replace(/^-+|-+$/g, '') || 'course001';
+
+            // Show progress
+            document.getElementById('progressContainer').classList.remove('hidden');
+            document.getElementById('convertBtn').disabled = true;
+            updateProgress(10);
+
+            setTimeout(() => {
+                createScormPackage(courseTitle, courseId)
+                    .then(() => updateProgress(100))
+                    .catch((error) => {
+                        document.getElementById('progressContainer').classList.add('hidden');
+                        document.getElementById('convertBtn').disabled = false;
+                        alert(`⚠️ Không thể tạo gói SCORM: ${error.message}`);
+                    });
+            }, 500);
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progressBar').style.width = percent + '%';
+            const messages = {
+                10: 'Đọc file HTML...',
+                30: 'Tạo manifest SCORM...',
+                50: 'Đóng gói nội dung...',
+                80: 'Hoàn thiện gói...',
+                100: 'Hoàn tất!'
+            };
+            if (messages[percent]) {
+                document.getElementById('progressText').textContent = messages[percent];
+            }
+        }
+
+        function createScormPackage(courseTitle, courseId) {
+            if (typeof JSZip === 'undefined') {
+                return Promise.reject(new Error('Không tải được thư viện JSZip. Hãy kiểm tra kết nối mạng rồi tải lại trang.'));
+            }
+
+            const zip = new JSZip();
+            
+            // Get form values
+            const courseDesc = '';
+            const courseAuthor = 'Anonymous';
+            const courseVersion = '1.0';
+            const scormVersion = document.getElementById('scormVersion').value;
+            const maxScore = document.getElementById('maxScore').value;
+
+            // Create directory structure
+            const contentFolder = zip.folder('content');
+            const assetsFolder = contentFolder.folder('assets');
+
+            // Create wrapper HTML with SCORM API
+            const wrappedHtml = createWrappedHtml(htmlFileContent, scormVersion);
+            contentFolder.file('index.html', wrappedHtml);
+
+            // Create imsmanifest.xml
+            const manifest = createManifest(courseTitle, courseId, courseDesc, courseVersion, scormVersion, maxScore);
+            zip.file('imsmanifest.xml', manifest);
+
+            // Create metadata.xml
+            const metadata = createMetadata(courseTitle, courseDesc, courseAuthor);
+            zip.file('metadata.xml', metadata);
+
+            // Generate and download
+            return zip.generateAsync({ type: 'blob' }).then((blob) => {
+                scormPackage = blob;
+                document.getElementById('progressContainer').classList.add('hidden');
+                document.getElementById('convertBtn').classList.add('hidden');
+                document.getElementById('successContainer').classList.remove('hidden');
+            });
+        }
+
+        function createWrappedHtml(htmlContent, scormVersion) {
+            // Extract body content
+            const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+            const bodyContent = bodyMatch ? bodyMatch[1] : htmlContent;
+
+            // Extract head styles and scripts
+            const headMatch = htmlContent.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+            const headContent = headMatch ? headMatch[1] : '';
+
+            const scormApi = scormVersion === '1.2' ? createScormAPI_1_2() : createScormAPI_2004();
+
+            return `<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCORM Course</title>
+    ${headContent}
+    <style>
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #scorm-indicator { position: fixed; top: 10px; right: 10px; background: #4CAF50; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 9999; }
+    </style>
+</head>
+<body>
+    <div id="scorm-indicator">✓ SCORM Course Active</div>
+    
+    ${bodyContent}
+    
+    ${scormApi}
+</body>
+</html>`;
+        }
+
+        function createScormAPI_1_2() {
+            return `<script>
+var scorm = {
+    initialized: false,
+    score: 0,
+    status: 'not attempted',
+    
+    init: function() {
+        if (this.initialized) return;
+        // Initialize SCORM tracking
+        console.log('SCORM 1.2 initialized');
+        this.initialized = true;
+        this.trackEvent('SCORMInitialized');
+        return true;
+    },
+    
+    finish: function() {
+        this.trackEvent('SCORMFinished');
+        this.setStatus('completed');
+        console.log('SCORM 1.2 course marked as completed');
+        return true;
+    },
+    
+    setScore: function(score) {
+        this.score = Math.min(100, Math.max(0, score));
+        this.trackEvent('ScoreSet:' + this.score);
+        return true;
+    },
+    
+    setStatus: function(status) {
+        this.status = status; // 'completed', 'passed', 'failed', etc.
+        this.trackEvent('StatusChanged:' + status);
+        return true;
+    },
+    
+    trackEvent: function(eventName) {
+        console.log('[SCORM 1.2] ' + eventName);
+        // In real Moodle, this would call LMS API
+    }
+};
+
+// Auto-initialize on page load
+window.addEventListener('load', function() {
+    scorm.init();
+});
+
+// Mark as completed on before unload
+window.addEventListener('beforeunload', function() {
+    if (document.readyState === 'loading') return;
+    scorm.setStatus('completed');
+});
+
+// Expose globally
+window.scorm = scorm;
+<\/script>`;
+        }
+
+        function createScormAPI_2004() {
+            return `<script>
+var scorm = {
+    initialized: false,
+    score: 0,
+    status: 'not attempted',
+    
+    init: function() {
+        if (this.initialized) return;
+        console.log('SCORM 2004 initialized');
+        this.initialized = true;
+        this.trackEvent('SCORMInitialized');
+        return true;
+    },
+    
+    finish: function() {
+        this.trackEvent('SCORMFinished');
+        this.setStatus('completed');
+        console.log('SCORM 2004 course marked as completed');
+        return true;
+    },
+    
+    setScore: function(score) {
+        this.score = Math.min(100, Math.max(0, score));
+        this.trackEvent('RawScore:' + this.score);
+        return true;
+    },
+    
+    setStatus: function(status) {
+        // SCORM 2004: unknown, in progress, completed, passed, failed
+        this.status = status;
+        this.trackEvent('CompletionStatus:' + status);
+        return true;
+    },
+    
+    trackEvent: function(eventName) {
+        console.log('[SCORM 2004] ' + eventName);
+    }
+};
+
+window.addEventListener('load', function() {
+    scorm.init();
+});
+
+window.addEventListener('beforeunload', function() {
+    if (document.readyState === 'loading') return;
+    scorm.setStatus('completed');
+});
+
+window.scorm = scorm;
+<\/script>`;
+        }
+
+        function createManifest(title, id, desc, version, scormVersion, maxScore) {
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="${escapeXml(id)}" version="${escapeXml(version)}" xmlns="http://www.imsglobal.org/xsd/imscp_v1p1" xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_v1p3.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.imsglobal.org/xsd/imscp_v1p1 http://www.imsglobal.org/xsd/imscp_v1p1.xsd http://www.adlnet.org/xsd/adlcp_v1p3.xsd http://www.adlnet.org/xsd/adlcp_v1p3.xsd">
+    <metadata>
+        <schema>ADL SCORM</schema>
+        <schemaversion>${scormVersion}</schemaversion>
+    </metadata>
+    <organizations default="org1">
+        <organization identifier="org1">
+            <title>${escapeXml(title)}</title>
+            <description>${escapeXml(desc)}</description>
+            <item identifier="item1" identifierref="res1" isvisible="true">
+                <title>${escapeXml(title)}</title>
+            </item>
+        </organization>
+    </organizations>
+    <resources>
+        <resource identifier="res1" type="webcontent" href="content/index.html" adlcp:scormType="sco">
+            <file href="content/index.html"/>
+        </resource>
+    </resources>
+</manifest>`;
+        }
+
+        function createMetadata(title, desc, author) {
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<metadata xmlns="http://ltsc.ieee.org/xsd/LOM">
+    <general>
+        <title>
+            <langstring xml:lang="vi">${escapeXml(title)}</langstring>
+        </title>
+        <description>
+            <langstring xml:lang="vi">${escapeXml(desc)}</langstring>
+        </description>
+    </general>
+    <lifeCycle>
+        <contribute>
+            <role>creator</role>
+            <entity>BEGIN:VCARD FN:${escapeXml(author)} END:VCARD</entity>
+        </contribute>
+    </lifeCycle>
+    <technical>
+        <format>text/html</format>
+        <location>content/index.html</location>
+    </technical>
+</metadata>`;
+        }
+
+        function escapeXml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function downloadScorm() {
+            if (scormPackage) {
+                const courseId = (htmlFileName || 'course001')
+                    .replace(/\.[^.]+$/, '')
+                    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+                    .replace(/^-+|-+$/g, '') || 'course001';
+                saveAs(scormPackage, `${courseId}_scorm.zip`);
+            }
+        }
+
+        function resetForm() {
+            htmlFileContent = null;
+            htmlFileName = null;
+            scormPackage = null;
+            document.getElementById('htmlFile').value = '';
+            document.getElementById('fileInfo').classList.add('hidden');
+            clearUploadError();
+            document.getElementById('successContainer').classList.add('hidden');
+            document.getElementById('convertBtn').classList.remove('hidden');
+            document.getElementById('convertBtn').disabled = false;
+            document.getElementById('fileName').textContent = '';
+        }
+    </script>
+</body>
+</html>
