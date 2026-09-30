@@ -132,7 +132,7 @@ a{color:inherit;text-decoration:none}
       </a>
       <div class="visits" aria-label="Thống kê lượt truy cập">
         <div class="visits-title">Thống kê lượt truy cập:</div>
-        <div class="visits-note">Ghi nhận trên trình duyệt này</div>
+        <div class="visits-note">Đồng bộ toàn hệ thống</div>
         <div class="visits-row"><span>Tháng này:</span><b id="monthVisits" aria-live="polite">-</b></div>
         <div class="visits-row"><span>Hôm nay:</span><b id="todayVisits" aria-live="polite">-</b></div>
       </div>
@@ -300,22 +300,17 @@ function render(){
   empty.style.display=list.length?'none':'block';
 }
 
-function updateVisitStats(){
-  const now=new Date();
-  const dateKey=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
-  const monthKey=dateKey.slice(0,7);
+async function updateVisitStats(){
   try{
-    const todayStorageKey='vlute-visits-day-'+dateKey;
-    const monthStorageKey='vlute-visits-month-'+monthKey;
-    const todayCount=(Number(localStorage.getItem(todayStorageKey))||0)+1;
-    const monthCount=(Number(localStorage.getItem(monthStorageKey))||0)+1;
-    localStorage.setItem(todayStorageKey,String(todayCount));
-    localStorage.setItem(monthStorageKey,String(monthCount));
-    document.getElementById('todayVisits').textContent=todayCount.toLocaleString('vi-VN');
-    document.getElementById('monthVisits').textContent=monthCount.toLocaleString('vi-VN');
+    const response=await fetch('/api/visits',{method:'POST',cache:'no-store'});
+    if(!response.ok) throw new Error('Visit counter API unavailable');
+    const counts=await response.json();
+    document.getElementById('todayVisits').textContent=Number(counts.today).toLocaleString('vi-VN');
+    document.getElementById('monthVisits').textContent=Number(counts.month).toLocaleString('vi-VN');
   }catch(error){
     document.getElementById('todayVisits').textContent='-';
     document.getElementById('monthVisits').textContent='-';
+    console.warn('Không tải được thống kê lượt truy cập.',error);
   }
 }
 

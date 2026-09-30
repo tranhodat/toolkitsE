@@ -1,7 +1,7 @@
 # Bộ công cụ giảng dạy VLUTE
 
-Trang cổng (hub) tập hợp các công cụ giảng dạy chạy trực tiếp trên trình duyệt.
-Toàn bộ là web tĩnh — deploy thẳng lên Vercel, không cần build.
+Trang cổng (hub) tập hợp các công cụ giảng dạy chạy trên trình duyệt. Hub được
+deploy trên Vercel; API thống kê lượt truy cập lưu số liệu dùng chung trong Upstash Redis.
 
 ## Cấu trúc thư mục
 
@@ -11,13 +11,16 @@ vlute-hub/
 ├── CREATE_LESSON.html   ← Soạn bài giảng → SCORM
 ├── CREATE_QUIZ.html     ← Tạo ngân hàng câu hỏi E-VLUTE
 ├── PROCESS_MARK.html    ← Xử lý điểm thành phần
+├── api/visits.js        ← API ghi nhận lượt truy cập trên Vercel
 ├── vercel.json         ← cấu hình web tĩnh (tùy chọn)
 └── README.md
 ```
 
 ## Chạy thử ở máy
 
-Mở trực tiếp `index.html` bằng trình duyệt, hoặc chạy một server tĩnh:
+Mở trực tiếp `index.html` hoặc chạy server tĩnh chỉ xem giao diện. Để kiểm tra
+thống kê lượt truy cập, cần chạy qua Vercel CLI và cấu hình biến môi trường như
+hướng dẫn bên dưới.
 
 ```bash
 npx serve .
@@ -39,6 +42,20 @@ vercel --prod # deploy chính thức
 
 **Cách 2 — qua GitHub:** đẩy thư mục này lên một repo GitHub → Vercel → Import
 repo. Vercel tự nhận đây là static site (không cần Framework, Build Command để trống).
+
+### Bật thống kê lượt truy cập dùng chung
+
+1. Tạo một database Redis trên Upstash và lấy **REST URL** cùng **REST token**.
+2. Trong Vercel, mở **Project Settings → Environment Variables**, thêm:
+  - `UPSTASH_REDIS_REST_URL`
+  - `UPSTASH_REDIS_REST_TOKEN`
+3. Chọn môi trường cần dùng (Production và/hoặc Preview), lưu biến môi trường rồi
+  deploy lại project.
+
+API `/api/visits` tăng lượt truy cập mỗi lần trang chủ được tải và lưu riêng số
+trong ngày/tháng theo múi giờ Việt Nam. Các máy và trình duyệt sẽ đọc chung số
+liệu; đây là lượt xem trang, không phải số khách truy cập duy nhất. Nếu chưa cấu
+hình Redis, giao diện hiển thị `-` cho hai số thống kê.
 
 ## Thêm một công cụ mới (khoảng 1 phút)
 
