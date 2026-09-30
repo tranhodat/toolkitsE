@@ -6,8 +6,14 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL
+    || process.env.KV_REST_API_URL
+    || process.env.storage_KV_REST_API_URL
+    || process.env.storage_REST_API_URL;
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN
+    || process.env.KV_REST_API_TOKEN
+    || process.env.storage_KV_REST_API_TOKEN
+    || process.env.storage_REST_API_TOKEN;
   if (!redisUrl || !redisToken) {
     return res.status(503).json({ error: 'Visit counter storage is not configured' });
   }

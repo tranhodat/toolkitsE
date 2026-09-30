@@ -51,6 +51,17 @@ repo. Vercel tự nhận đây là static site (không cần Framework, Build Co
   - `UPSTASH_REDIS_REST_TOKEN`
 3. Chọn môi trường cần dùng (Production và/hoặc Preview), lưu biến môi trường rồi
   deploy lại project.
+1. Trong Vercel project, mở **Storage** và xác nhận Redis database đã được link
+  với project; biến REST URL/token phải có trong **Settings → Environment
+  Variables** cho môi trường **Production**.
+2. API tự đọc các tên biến Vercel Storage thường tạo như
+  `storage_KV_REST_API_URL` và `storage_KV_REST_API_TOKEN`. Cũng hỗ trợ
+  `KV_REST_API_URL`/`KV_REST_API_TOKEN` và
+  `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`. Không cần tạo thêm biến
+  nếu project đã có đủ cặp REST URL/token.
+3. Nếu vừa link storage hoặc vừa thêm biến, redeploy production mới nhất (hoặc
+  push commit mới lên `main`) để Function nhận môi trường mới. Không commit
+  URL/token Redis vào GitHub.
 
 API `/api/visits` tăng lượt truy cập mỗi lần trang chủ được tải và lưu riêng số
 trong ngày/tháng theo múi giờ Việt Nam. Các máy và trình duyệt sẽ đọc chung số
