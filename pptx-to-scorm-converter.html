@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPTX to SCORM Converter for Moodle</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 600px;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background: #f5f7ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #e8f0ff;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-text {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .file-info {
+            background: #f5f7ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-name {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .settings {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .settings.show {
+            display: block;
+        }
+
+        .setting-group {
+            margin-bottom: 15px;
+        }
+
+        .setting-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .setting-group input,
+        .setting-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .setting-group input:focus,
+        .setting-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            grid-column: 1 / -1;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #f5f7ff;
+        }
+
+        .progress-container {
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-label {
+            color: #333;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .result {
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .result-text {
+            color: #22c55e;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .result-details {
+            color: #666;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .error {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+            color: #dc2626;
+        }
+
+        .error .result-icon {
+            font-size: 32px;
+        }
+
+        .error .result-text {
+            color: #dc2626;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #1e40af;
+            line-height: 1.6;
+            margin-top: 20px;
+        }
+
+        .info-box h4 {
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 PPTX to SCORM Converter</h1>
+            <p>Chuyển đổi PowerPoint sang SCORM Package cho Moodle</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Chọn hoặc kéo thả file PPTX</div>
+            <div class="upload-subtext">Chọn file PowerPoint (.pptx)</div>
+            <input type="file" id="fileInput" accept=".pptx" />
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+
+        <div class="settings" id="settings">
+            <div class="setting-group">
+                <label>Tên khóa học (Course Name)</label>
+                <input type="text" id="courseName" placeholder="Nhập tên khóa học" value="PowerPoint Course" />
+            </div>
+
+            <div class="setting-group">
+                <label>Mô tả khóa học</label>
+                <input type="text" id="courseDesc" placeholder="Mô tả khóa học" value="Khóa học được tạo từ file PowerPoint" />
+            </div>
+
+            <div class="setting-group">
+                <label>Giáo viên/Tác giả</label>
+                <input type="text" id="author" placeholder="Nhập tên" value="Author" />
+            </div>
+
+            <div class="setting-group">
+                <label>Tùy chọn phát</label>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="autoPlay" />
+                        <label for="autoPlay" style="margin: 0; font-weight: 400;">Tự động phát</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label>Thời gian mỗi slide (giây)</label>
+                <input type="number" id="slideTime" min="5" max="300" value="30" />
+            </div>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-label" id="progressLabel">Đang xử lý...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="result" id="result">
+            <div class="result-icon" id="resultIcon">✓</div>
+            <div class="result-text" id="resultText">Chuyển đổi thành công!</div>
+            <div class="result-details" id="resultDetails"></div>
+        </div>
+
+        <div class="button-group" id="buttonGroup">
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+            <button class="btn btn-primary" id="convertBtn" disabled>Chuyển đổi</button>
+        </div>
+
+        <div class="info-box">
+            <h4>📋 Thông tin SCORM:</h4>
+            <ul>
+                <li>Render PPTX trực tiếp trên trình duyệt, giữ bố cục, hình ảnh và kiểu chữ</li>
+                <li>SCORM 1.2 tự chứa renderer và file PowerPoint trong gói ZIP</li>
+                <li>Animation và một số biểu đồ/SmartArt có thể khác bản PowerPoint</li>
+                <li>Hỗ trợ điều hướng slide, tự phát, phím mũi tên và toàn màn hình</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const settings = document.getElementById('settings');
+        const progressContainer = document.getElementById('progressContainer');
+        const convertBtn = document.getElementById('convertBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const result = document.getElementById('result');
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            selectedFile = files[0];
+
+            if (!/\.pptx$/i.test(selectedFile.name)) {
+                selectedFile = null;
+                convertBtn.disabled = true;
+                showError('Vui lòng chọn file PPTX!');
+                return;
+            }
+
+            document.getElementById('fileName').textContent = '📄 ' + selectedFile.name;
+            document.getElementById('fileSize').textContent = 'Kích thước: ' + (selectedFile.size / 1024 / 1024).toFixed(2) + ' MB';
+
+            fileInfo.classList.add('show');
+            settings.classList.add('show');
+            convertBtn.disabled = false;
+            result.classList.remove('show');
+        }
+
+        convertBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            convertBtn.disabled = true;
+            resetBtn.disabled = true;
+            progressContainer.classList.add('show');
+            result.classList.remove('show');
+
+            try {
+                await convertPPTXtoSCORM(selectedFile);
+            } catch (error) {
+                showError('Không thể tạo gói SCORM: ' + error.message);
+            } finally {
+                convertBtn.disabled = !selectedFile;
+                resetBtn.disabled = false;
+                progressContainer.classList.remove('show');
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfo.classList.remove('show');
+            settings.classList.remove('show');
+            result.classList.remove('show');
+            convertBtn.disabled = true;
+        });
+
+        function updateProgress(percent, label) {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressLabel').textContent = label;
+        }
+
+        function showError(message) {
+            result.classList.add('show', 'error');
+            document.getElementById('resultIcon').textContent = '❌';
+            document.getElementById('resultText').textContent = 'Lỗi!';
+            document.getElementById('resultDetails').textContent = message;
+        }
+
+        function showSuccess(message) {
+            result.classList.add('show');
+            result.classList.remove('error');
+            document.getElementById('resultIcon').textContent = '✓';
+            document.getElementById('resultText').textContent = 'Chuyển đổi thành công!';
+            document.getElementById('resultDetails').innerHTML = message;
+        }
+
+        async function convertPPTXtoSCORM(file) {
+            if (typeof JSZip === 'undefined') {
+                throw new Error('Không tải được thư viện ZIP. Hãy kiểm tra kết nối Internet rồi tải lại trang.');
+            }
+
+            const rendererUrl = 'https://cdn.jsdelivr.net/npm/@aiden0z/pptx-renderer@1.3.0/dist/aiden0z-pptx-renderer.browser.es.js';
+            updateProgress(5, 'Đang tải bộ render PowerPoint...');
+            const [rendererResponse, licenseResponse] = await Promise.all([
+                fetch(rendererUrl),
+                fetch('https://raw.githubusercontent.com/aiden0z/pptx-renderer/main/LICENSE')
+            ]);
+            if (!rendererResponse.ok) throw new Error('Không tải được bộ render PowerPoint từ CDN.');
+            if (!licenseResponse.ok) throw new Error('Không tải được giấy phép của bộ render.');
+            const rendererSource = await rendererResponse.text();
+            const rendererLicense = await licenseResponse.text();
+            const { PptxViewer, RECOMMENDED_ZIP_LIMITS } = await import(rendererUrl);
+
+            updateProgress(15, 'Đang kiểm tra và render slide...');
+            const arrayBuffer = await file.arrayBuffer();
+            const previewHost = document.createElement('div');
+            previewHost.style.cssText = 'position: fixed; left: -2000px; top: 0; width: 1280px; height: 720px; overflow: hidden;';
+            document.body.appendChild(previewHost);
+
+            let slideCount;
+            try {
+                const preview = await PptxViewer.open(arrayBuffer, previewHost, {
+                    renderMode: 'slide',
+                    zipLimits: RECOMMENDED_ZIP_LIMITS,
+                    pdfjs: false
+                });
+                slideCount = preview.slideCount;
+                preview.destroy();
+            } finally {
+                previewHost.remove();
+            }
+            if (!slideCount) throw new Error('Không render được slide nào từ file PPTX.');
+
+            const courseName = document.getElementById('courseName').value.trim() || file.name.replace(/\.pptx$/i, '');
+            const slideTime = Math.min(300, Math.max(5, Number(document.getElementById('slideTime').value) || 30));
+            const autoPlay = document.getElementById('autoPlay').checked;
+            const xmlEscape = (value) => String(value).replace(/[&<>"']/g, (character) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;'
+            })[character]);
+            const identifier = 'PPTX_SCORM_' + Date.now();
+            const manifest = `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="${identifier}" version="1.0"
+    xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+    xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.imsproject.org/xsd/imscp_rootv1p1p2 http://www.imsglobal.org/xsd/imscp_rootv1p1p2.xsd http://www.adlnet.org/xsd/adlcp_rootv1p2 http://www.adlnet.org/xsd/adlcp_rootv1p2.xsd">
+    <metadata><schema>ADL SCORM</schema><schemaversion>1.2</schemaversion></metadata>
+    <organizations default="ORG_${identifier}">
+        <organization identifier="ORG_${identifier}">
+            <title>${xmlEscape(courseName)}</title>
+            <item identifier="ITEM_${identifier}" identifierref="RESOURCE_${identifier}" isvisible="true">
+                <title>${xmlEscape(courseName)}</title>
+            </item>
+        </organization>
+    </organizations>
+    <resources>
+        <resource identifier="RESOURCE_${identifier}" type="webcontent" adlcp:scormtype="sco" href="index.html">
+            <file href="index.html"/><file href="course.json"/><file href="course.pptx"/>
+            <file href="js/pptx-renderer.js"/><file href="THIRD-PARTY-LICENSE.txt"/>
+        </resource>
+    </resources>
+</manifest>`;
+            const courseData = JSON.stringify({ title: courseName, slideCount, slideTime, autoPlay });
+            const playerHtml = `<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${xmlEscape(courseName)}</title>
+<style>html,body{margin:0;width:100%;height:100%;font-family:Arial,sans-serif;background:#111;color:#f5f7fa}.player{height:100dvh;display:flex;flex-direction:column}.top{padding:12px 20px;background:#20252b;display:flex;align-items:center;gap:18px}.title{font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.progress{height:4px;background:#454b52;flex:2;border-radius:4px;overflow:hidden}.progress span{display:block;height:100%;width:0;background:#35c99a}.counter{font-size:13px;white-space:nowrap}.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:12px;background:#090a0b}.viewer-host{width:min(100%,1440px);height:100%;min-height:0;overflow:auto;background:#fff;color:#111}.controls{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;background:#20252b;flex-wrap:wrap}.controls button,.controls select{min-height:38px;padding:8px 14px;border:1px solid #555d66;border-radius:4px;background:#30363d;color:#fff;font-size:14px}.controls button{cursor:pointer}.controls button:disabled{opacity:.45;cursor:not-allowed}.controls label{font-size:13px;display:flex;align-items:center;gap:6px}@media(max-width:600px){.top{padding:10px;gap:8px}.progress{flex:1}.stage{padding:4px}.controls{gap:6px;padding:8px}.controls button,.controls select{padding:7px 9px}}</style></head>
+<body><main class="player"><header class="top"><div class="title" id="title">${xmlEscape(courseName)}</div><div class="progress" aria-label="Tiến độ"><span id="progress"></span></div><div class="counter"><span id="current">1</span> / <span id="total">${slideCount}</span></div></header><section class="stage"><div id="viewer" class="viewer-host"></div></section><nav class="controls" aria-label="Điều khiển slide"><button id="previous" type="button">Trước</button><button id="play" type="button">Phát</button><button id="next" type="button">Tiếp</button><button id="fullscreen" type="button">Toàn màn hình</button><label><input id="autoplay" type="checkbox" ${autoPlay ? 'checked' : ''}> Tự phát</label><label>Tốc độ <select id="speed"><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="1.5">1.5x</option><option value="2">2x</option></select></label></nav></main>
+<script type="module">
+import { PptxViewer, RECOMMENDED_ZIP_LIMITS } from './js/pptx-renderer.js';
+(async()=>{const course=await(await fetch('course.json')).json();const response=await fetch('course.pptx');if(!response.ok)throw new Error('Không thể tải PPTX trong gói SCORM');const viewer=await PptxViewer.open(await response.arrayBuffer(),document.getElementById('viewer'),{renderMode:'slide',zipLimits:RECOMMENDED_ZIP_LIMITS,pdfjs:false});let index=0,playing=false,completed=false,api=null,timer=null,speed=1;for(let win=window,attempt=0;win&&attempt<500;attempt++){try{if(win.API){api=win.API;break}if(win.parent===win)break;win=win.parent}catch(error){break}}if(api){api.LMSInitialize('');if(api.LMSGetValue('cmi.core.lesson_status')==='not attempted')api.LMSSetValue('cmi.core.lesson_status','incomplete')}const set=(key,value)=>{if(api)api.LMSSetValue(key,String(value))};const update=()=>{document.getElementById('current').textContent=index+1;document.getElementById('progress').style.width=((index+1)/course.slideCount*100)+'%';document.getElementById('previous').disabled=index===0;document.getElementById('next').disabled=index===course.slideCount-1;set('cmi.core.lesson_location',index+1);set('cmi.core.score.raw',Math.round((index+1)/course.slideCount*100));if(index===course.slideCount-1&&!completed){completed=true;stop();set('cmi.core.lesson_status','completed');if(api){api.LMSCommit('');api.LMSFinish('');api=null}}};async function goToSlide(next){if(next<0||next>=course.slideCount)return;await viewer.goToSlide(next,{behavior:'instant'});index=next;update()}function stop(){playing=false;clearTimeout(timer);document.getElementById('play').textContent='Phát'}function schedule(){if(!playing)return;timer=setTimeout(()=>{if(index<course.slideCount-1)goToSlide(index+1).then(()=>{if(playing)schedule()});else stop()},course.slideTime*1000/speed)}document.getElementById('previous').addEventListener('click',()=>goToSlide(index-1));document.getElementById('next').addEventListener('click',()=>goToSlide(index+1));document.getElementById('play').addEventListener('click',()=>{if(playing)stop();else{playing=true;document.getElementById('play').textContent='Tạm dừng';schedule()}});document.getElementById('speed').addEventListener('change',event=>{speed=Number(event.target.value)||1;if(playing){clearTimeout(timer);schedule()}});document.getElementById('autoplay').addEventListener('change',event=>{if(event.target.checked&&index===0&&!playing)document.getElementById('play').click()});document.getElementById('fullscreen').addEventListener('click',()=>{if(document.fullscreenElement)document.exitFullscreen();else document.querySelector('.player').requestFullscreen?.()});document.addEventListener('keydown',event=>{if(event.key==='ArrowLeft')document.getElementById('previous').click();if(event.key==='ArrowRight')document.getElementById('next').click();if(event.key===' '){event.preventDefault();document.getElementById('play').click()}});window.addEventListener('pagehide',()=>{stop();if(api){api.LMSCommit('');api.LMSFinish('');api=null}viewer.destroy()});update();if(course.autoPlay)document.getElementById('play').click()})().catch(error=>{const host=document.getElementById('viewer');if(host)host.textContent='Không thể render PowerPoint: '+error.message;console.error(error)});
+<\/script></body></html>`;
+
+            updateProgress(75, 'Đang tạo gói SCORM...');
+            const packageZip = new JSZip();
+            packageZip.file('imsmanifest.xml', manifest);
+            packageZip.file('index.html', playerHtml);
+            packageZip.file('course.json', courseData);
+            packageZip.file('course.pptx', arrayBuffer);
+            packageZip.file('js/pptx-renderer.js', rendererSource);
+            packageZip.file('THIRD-PARTY-LICENSE.txt', rendererLicense);
+            const blob = await packageZip.generateAsync({
+                type: 'blob',
+                compression: 'DEFLATE',
+                compressionOptions: { level: 6 },
+                mimeType: 'application/zip'
+            });
+            const downloadUrl = URL.createObjectURL(blob);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = downloadUrl;
+            downloadLink.download = (courseName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '').toLowerCase() || 'course') + '_scorm.zip';
+            downloadLink.click();
+            setTimeout(() => URL.revokeObjectURL(downloadUrl), 60000);
+            updateProgress(100, 'Hoàn tất!');
+            showSuccess(`<strong>${xmlEscape(courseName)}</strong>: đã render và đóng gói ${slideCount} slide. Renderer và PPTX gốc đều nằm trong ZIP.`);
+        }
+
+        async function legacyConvertPPTXtoTextSCORM(file) {
+            if (typeof JSZip === 'undefined') {
+                throw new Error('Không tải được thư viện ZIP. Hãy kiểm tra kết nối Internet rồi tải lại trang.');
+            }
+
+            updateProgress(10, 'Đang đọc file PowerPoint...');
+            const pptx = await JSZip.loadAsync(await file.arrayBuffer());
+            const presentationFile = pptx.file('ppt/presentation.xml');
+            if (!presentationFile) throw new Error('File không có cấu trúc PowerPoint PPTX hợp lệ.');
+
+            const presentationXml = new DOMParser().parseFromString(await presentationFile.async('string'), 'application/xml');
+            const relationshipsFile = pptx.file('ppt/_rels/presentation.xml.rels');
+            const slideRelationshipIds = Array.from(presentationXml.getElementsByTagNameNS(
+                'http://schemas.openxmlformats.org/presentationml/2006/main', 'sldId'
+            )).map((slide) => slide.getAttributeNS(
+                'http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id'
+            ));
+            const slidePaths = [];
+
+            if (relationshipsFile && slideRelationshipIds.length) {
+                const relationshipsXml = new DOMParser().parseFromString(await relationshipsFile.async('string'), 'application/xml');
+                const targets = new Map(Array.from(relationshipsXml.getElementsByTagName('Relationship')).map((relationship) => [
+                    relationship.getAttribute('Id'), relationship.getAttribute('Target')
+                ]));
+                for (const relationshipId of slideRelationshipIds) {
+                    const target = targets.get(relationshipId);
+                    if (!target) continue;
+                    const parts = (target.startsWith('/') ? target.slice(1) : 'ppt/' + target).split('/');
+                    const normalized = [];
+                    for (const part of parts) {
+                        if (part === '..') normalized.pop();
+                        else if (part && part !== '.') normalized.push(part);
+                    }
+                    slidePaths.push(normalized.join('/'));
+                }
+            }
+
+            if (!slidePaths.length) {
+                slidePaths.push(...Object.keys(pptx.files)
+                    .filter((path) => /^ppt\/slides\/slide\d+\.xml$/.test(path))
+                    .sort((left, right) => Number(left.match(/slide(\d+)/)[1]) - Number(right.match(/slide(\d+)/)[1])));
+            }
+            if (!slidePaths.length) throw new Error('Không tìm thấy slide nào trong file PPTX.');
+
+            const slides = [];
+            for (let index = 0; index < slidePaths.length; index++) {
+                updateProgress(15 + Math.round(((index + 1) / slidePaths.length) * 55), `Đang đọc slide ${index + 1}/${slidePaths.length}...`);
+                const slideFile = pptx.file(slidePaths[index]);
+                if (!slideFile) throw new Error(`Không tìm thấy dữ liệu của slide ${index + 1}.`);
+                const slideXml = new DOMParser().parseFromString(await slideFile.async('string'), 'application/xml');
+                const paragraphs = Array.from(slideXml.getElementsByTagNameNS(
+                    'http://schemas.openxmlformats.org/drawingml/2006/main', 'p'
+                )).map((paragraph) => Array.from(paragraph.getElementsByTagNameNS(
+                    'http://schemas.openxmlformats.org/drawingml/2006/main', 't'
+                )).map((run) => run.textContent || '').join('')).filter((text) => text.trim());
+                slides.push({ number: index + 1, paragraphs });
+            }
+
+            const courseName = document.getElementById('courseName').value.trim() || file.name.replace(/\.pptx$/i, '');
+            const courseData = JSON.stringify({ title: courseName, slides });
+            const xmlEscape = (value) => String(value).replace(/[&<>"']/g, (character) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;'
+            })[character]);
+            const identifier = 'PPTX_SCORM_' + Date.now();
+            const manifest = `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="${identifier}" version="1.0"
+    xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+    xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.imsproject.org/xsd/imscp_rootv1p1p2 http://www.imsglobal.org/xsd/imscp_rootv1p1p2.xsd http://www.adlnet.org/xsd/adlcp_rootv1p2 http://www.adlnet.org/xsd/adlcp_rootv1p2.xsd">
+    <metadata><schema>ADL SCORM</schema><schemaversion>1.2</schemaversion></metadata>
+    <organizations default="ORG_${identifier}">
+        <organization identifier="ORG_${identifier}">
+            <title>${xmlEscape(courseName)}</title>
+            <item identifier="ITEM_${identifier}" identifierref="RESOURCE_${identifier}" isvisible="true">
+                <title>${xmlEscape(courseName)}</title>
+            </item>
+        </organization>
+    </organizations>
+    <resources>
+        <resource identifier="RESOURCE_${identifier}" type="webcontent" adlcp:scormtype="sco" href="index.html">
+            <file href="index.html"/><file href="course.json"/>
+        </resource>
+    </resources>
+</manifest>`;
+            const playerHtml = `<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${xmlEscape(courseName)}</title>
+<style>html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#15191e;color:#f5f7fa}.player{min-height:100vh;display:flex;flex-direction:column}.top{padding:16px 22px;background:#242a31;display:flex;gap:18px;align-items:center}.title{font-weight:700;flex:1}.progress{height:5px;background:#454d56;flex:2}.progress span{display:block;height:100%;background:#37c99a;width:0}.counter{white-space:nowrap}.slide{flex:1;width:min(100% - 48px,1100px);min-height:55vh;margin:24px auto;padding:28px;background:#fff;color:#1b1b1b;box-sizing:border-box;line-height:1.55;white-space:normal}.slide p{margin:0 0 14px}.controls{display:flex;justify-content:center;gap:10px;padding:16px;background:#242a31}.controls button{padding:10px 18px;border:0;border-radius:4px;background:#3b82f6;color:#fff;cursor:pointer}.controls button:disabled{opacity:.45}@media(max-width:600px){.top{padding:12px;gap:10px}.slide{width:calc(100% - 20px);margin:10px;padding:18px}.controls{padding:10px}.controls button{padding:9px 12px}}</style></head>
+<body><main class="player"><header class="top"><div class="title" id="title"></div><div class="progress"><span id="progress"></span></div><div class="counter"><span id="current">1</span> / <span id="total">${slides.length}</span></div></header><section class="slide" id="slide" aria-live="polite"></section><nav class="controls"><button id="previous" type="button">Trước</button><button id="next" type="button">Tiếp</button></nav></main>
+<script>
+(async()=>{const course=await(await fetch('course.json')).json();let index=0;let api=null;for(let win=window,attempt=0;win&&attempt<500;attempt++){try{if(win.API){api=win.API;break}if(win.parent===win)break;win=win.parent}catch(error){break}}if(api)api.LMSInitialize('');const set=(key,value)=>{if(api)api.LMSSetValue(key,String(value))};const render=()=>{const slide=course.slides[index];document.getElementById('title').textContent=course.title;document.getElementById('current').textContent=index+1;document.getElementById('total').textContent=course.slides.length;document.getElementById('progress').style.width=((index+1)/course.slides.length*100)+'%';document.getElementById('previous').disabled=index===0;document.getElementById('next').disabled=index===course.slides.length-1;const container=document.getElementById('slide');container.replaceChildren();for(const text of slide.paragraphs){const paragraph=document.createElement('p');paragraph.textContent=text;container.appendChild(paragraph)}if(!slide.paragraphs.length){const empty=document.createElement('p');empty.textContent='Slide không có văn bản.';container.appendChild(empty)}set('cmi.core.lesson_location',index+1);set('cmi.core.score.raw',Math.round((index+1)/course.slides.length*100));if(index===course.slides.length-1){set('cmi.core.lesson_status','completed');if(api){api.LMSCommit('');api.LMSFinish('');api=null}}};document.getElementById('previous').addEventListener('click',()=>{if(index>0){index--;render()}});document.getElementById('next').addEventListener('click',()=>{if(index<course.slides.length-1){index++;render()}});document.addEventListener('keydown',event=>{if(event.key==='ArrowLeft')document.getElementById('previous').click();if(event.key==='ArrowRight')document.getElementById('next').click()});render()})().catch(error=>{document.getElementById('slide').textContent='Không thể tải nội dung khóa học: '+error.message});
+<\/script></body></html>`;
+
+            const packageZip = new JSZip();
+            packageZip.file('imsmanifest.xml', manifest);
+            packageZip.file('index.html', playerHtml);
+            packageZip.file('course.json', courseData);
+            updateProgress(80, 'Đang tạo ZIP SCORM...');
+            const blob = await packageZip.generateAsync({
+                type: 'blob',
+                compression: 'DEFLATE',
+                compressionOptions: { level: 6 },
+                mimeType: 'application/zip'
+            });
+            const downloadUrl = URL.createObjectURL(blob);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = downloadUrl;
+            downloadLink.download = (courseName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '').toLowerCase() || 'course') + '_scorm.zip';
+            downloadLink.click();
+            setTimeout(() => URL.revokeObjectURL(downloadUrl), 60000);
+            updateProgress(100, 'Hoàn tất!');
+            showSuccess(`<strong>${xmlEscape(courseName)}</strong>: đã tạo gói SCORM 1.2 gồm ${slides.length} slide. Manifest được đặt ở thư mục gốc của ZIP.`);
+        }
+
+        /* Legacy browser-side conversion is intentionally disabled.
+        async function convertPPTXtoSCORM() {
+            throw new Error('Trình duyệt không thể tự điều khiển PowerPoint. Hãy chạy run-pptx-to-scorm.bat để tạo gói SCORM giữ nguyên định dạng.');
+        }
+
+        function updateProgress(percent, label) {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressLabel').textContent = label;
+        }
+
+        function showError(message) {
+            result.classList.add('show', 'error');
+            document.getElementById('resultIcon').textContent = '❌';
+            document.getElementById('resultText').textContent = 'Lỗi!';
+            document.getElementById('resultDetails').textContent = message;
+        }
+
+        function showSuccess(message) {
+            result.classList.add('show');
+            result.classList.remove('error');
+            document.getElementById('resultIcon').textContent = '✓';
+            document.getElementById('resultText').textContent = 'Chuyển đổi thành công!';
+            document.getElementById('resultDetails').innerHTML = message;
+        }
+
+        async function legacyConvertPPTXtoSCORM(file) {
+            updateProgress(10, 'Đang đọc file PPTX...');
+
+            // Read file as array buffer
+            const arrayBuffer = await file.arrayBuffer();
+
+            updateProgress(20, 'Đang kiểm tra số slide...');
+            const sourcePptx = await JSZip.loadAsync(arrayBuffer);
+            const pptxSlideCount = Object.keys(sourcePptx.files).filter((path) => /^ppt\/slides\/slide\d+\.xml$/.test(path)).length;
+            const pdfDocument = await pdfjsLib.getDocument({ data: await selectedPdf.arrayBuffer() }).promise;
+            if (!pptxSlideCount || pdfDocument.numPages !== pptxSlideCount) {
+                throw new Error(`Số trang PDF (${pdfDocument.numPages}) không khớp số slide PPTX (${pptxSlideCount}). Hãy xuất lại PDF từ đúng file PowerPoint.`);
+            }
+
+            const slideImages = [];
+            for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
+                updateProgress(20 + Math.round((pageNumber / pdfDocument.numPages) * 45), `Đang dựng hình slide ${pageNumber}/${pdfDocument.numPages}...`);
+                const page = await pdfDocument.getPage(pageNumber);
+                const baseViewport = page.getViewport({ scale: 1 });
+                const scale = Math.min(2, 1920 / Math.max(baseViewport.width, baseViewport.height));
+                const viewport = page.getViewport({ scale });
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.ceil(viewport.width);
+                canvas.height = Math.ceil(viewport.height);
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                const imageBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                if (!imageBlob) throw new Error(`Không thể tạo ảnh cho slide ${pageNumber}.`);
+                slideImages.push(new Uint8Array(await imageBlob.arrayBuffer()));
+                canvas.width = 0;
+                canvas.height = 0;
+            }
+
+            // Create SCORM package
+            const scormZip = new JSZip();
+
+            // Create imsmanifest.xml
+            const courseName = document.getElementById('courseName').value;
+            const courseDesc = document.getElementById('courseDesc').value;
+            const author = document.getElementById('author').value;
+            const timestamp = new Date().toISOString();
+
+            const manifest = `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="PowerPoint-SCORM-${Date.now()}" version="1.0"
+    xmlns="http://www.imsglobal.org/xsd/imscp_v1p1"
+    xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_v1p3"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.imsglobal.org/xsd/imscp_v1p1 http://www.imsglobal.org/xsd/imscp_v1p1/imscp_v1p1.xsd http://www.adlnet.org/xsd/adlcp_v1p3 http://www.adlnet.org/xsd/adlcp_v1p3.xsd">
+    <metadata>
+        <schema>ADL SCORM</schema>
+        <schemaversion>2004 4th Edition</schemaversion>
+    </metadata>
+    <organizations default="pptx-course">
+        <organization identifier="pptx-course">
+            <title>${escapeXml(courseName)}</title>
+            <item identifier="item1" identifierref="resource1" isvisible="true">
+                <title>${escapeXml(courseName)}</title>
+            </item>
+        </organization>
+    </organizations>
+    <resources>
+        <resource identifier="resource1" type="webcontent" adlcp:scormType="sco" href="index.html">
+            <file href="index.html"/>
+            <file href="source.pptx"/>
+            <file href="css/style.css"/>
+            <file href="js/scorm-api.js"/>
+            <file href="js/player.js"/>
+            ${slideImages.map((_, index) => `<file href="slides/slide-${String(index + 1).padStart(3, '0')}.png"/>`).join('\n            ')}
+        </resource>
+    </resources>
+</manifest>`;
+
+            scormZip.file('imsmanifest.xml', manifest);
+            scormZip.file('source.pptx', arrayBuffer);
+            slideImages.forEach((image, index) => {
+                scormZip.file(`slides/slide-${String(index + 1).padStart(3, '0')}.png`, image);
+            });
+
+            updateProgress(70, 'Đang tạo HTML player...');
+
+            // Create player HTML
+            const playerHTML = await createPlayerHTML(slideImages.length);
+            scormZip.file('index.html', playerHTML);
+
+            updateProgress(40, 'Đang tạo CSS...');
+
+            // Create CSS
+            const css = createStyleSheet();
+            scormZip.file('css/style.css', css);
+
+            updateProgress(50, 'Đang tạo SCORM API...');
+
+            // Create SCORM API
+            const scormAPI = createSCORMAPI();
+            scormZip.file('js/scorm-api.js', scormAPI);
+
+            updateProgress(60, 'Đang tạo player script...');
+
+            // Create player script
+            const playerScript = createPlayerScript();
+            scormZip.file('js/player.js', playerScript);
+
+            updateProgress(70, 'Đang tạo metadata...');
+
+            // Create ADO.xml
+            const adoXml = `<?xml version="1.0" encoding="UTF-8"?>
+<lom xmlns="http://www.imsglobal.org/xsd/imsmd_v1p2"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.imsglobal.org/xsd/imsmd_v1p2 http://www.imsglobal.org/rdf/imslom_v1p2.rdf">
+    <general>
+        <title>${escapeXml(courseName)}</title>
+        <description>${escapeXml(courseDesc)}</description>
+        <keyword>${escapeXml(courseName)}</keyword>
+    </general>
+    <lifeCycle>
+        <contribute>
+            <role>Author</role>
+            <entity>${escapeXml(author)}</entity>
+            <date>${timestamp}</date>
+        </contribute>
+    </lifeCycle>
+    <metaMetadata>
+        <contribute>
+            <role>Creator</role>
+            <entity>PPTX to SCORM Converter</entity>
+            <date>${timestamp}</date>
+        </contribute>
+    </metaMetadata>
+</lom>`;
+            scormZip.folder('metadata').file('ado.xml', adoXml);
+
+            updateProgress(80, 'Đang đóng gói...');
+
+            // Generate ZIP
+            const blob = await scormZip.generateAsync({ type: 'blob' });
+
+            updateProgress(90, 'Đang chuẩn bị tải xuống...');
+
+            // Download
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = courseName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_scorm.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            updateProgress(100, 'Hoàn tất!');
+
+            showSuccess(`<strong>${courseName}</strong> đã được chuyển đổi thành công!<br>
+                File SCORM package đã tải xuống.<br>
+                <br>
+                📌 Hướng dẫn upload lên Moodle:<br>
+                1. Vào khóa học → Bật chế độ chỉnh sửa<br>
+                2. Chọn "Thêm hoạt động hoặc tài nguyên" → SCORM<br>
+                3. Kéo thả hoặc upload file zip<br>
+                4. Cấu hình các tùy chọn và lưu`);
+        }
+
+        async function createPlayerHTML(slideCount) {
+            const autoPlay = document.getElementById('autoPlay').checked;
+            const slideTime = document.getElementById('slideTime').value;
+            const courseName = document.getElementById('courseName').value;
+
+            return `<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(courseName)}</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="scorm-container">
+        <div class="header">
+            <h1>${escapeHtml(courseName)}</h1>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+            <span class="slide-counter"><span id="currentSlide">1</span> / <span id="totalSlides">1</span></span>
+        </div>
+
+        <div class="slide-container">
+            <div id="slide-canvas" class="slide-canvas"><img id="slideImage" alt="" /></div>
+        </div>
+
+        <div class="controls">
+            <button id="prevBtn" class="control-btn">← Trước</button>
+            <button id="playBtn" class="control-btn">▶ Phát</button>
+            <button id="nextBtn" class="control-btn">Tiếp →</button>
+            <button id="fullscreenBtn" class="control-btn">⛶ Toàn màn hình</button>
+        </div>
+
+        <div class="settings-panel">
+            <label>
+                <input type="checkbox" id="autoPlayToggle" ${autoPlay ? 'checked' : ''} />
+                Tự động phát
+            </label>
+            <label>
+                Tốc độ: <select id="speedControl">
+                    <option value="0.5">0.5x</option>
+                    <option value="1" selected>1x (Normal)</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2x</option>
+                </select>
+            </label>
+        </div>
+
+        <div id="completion-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>🎉 Hoàn thành khóa học!</h2>
+                <p>Bạn đã hoàn thành tất cả các slide.</p>
+                <button onclick="location.reload()">Bắt đầu lại</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/scorm-api.js"><\/script>
+    <script src="js/player.js"><\/script>
+    <script>
+        const playerConfig = {
+            autoPlay: ${autoPlay},
+            slideTime: ${slideTime},
+            courseName: ${JSON.stringify(courseName)},
+            slideCount: ${slideCount}
+        };
+        
+        initializePlayer(playerConfig);
+    <\/script>
+</body>
+</html>`;
+        }
+
+        function createStyleSheet() {
+            return `* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #1a1a1a;
+    color: #fff;
+    overflow: hidden;
+}
+
+.scorm-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+}
+
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.header h1 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #4ade80;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.slide-counter {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.slide-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    background: #000;
+    overflow: hidden;
+}
+
+.slide-canvas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: min(100%, 1200px);
+    aspect-ratio: 16 / 9;
+    max-height: 90%;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    position: relative;
+    overflow: hidden;
+}
+
+#slideImage {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+    background: white;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+    background: #2a2a2a;
+    border-top: 1px solid #444;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.control-btn {
+    padding: 10px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.control-btn:hover {
+    background: #764ba2;
+    transform: translateY(-2px);
+}
+
+.control-btn:active {
+    transform: translateY(0);
+}
+
+.settings-panel {
+    display: flex;
+    gap: 20px;
+    padding: 10px 20px;
+    background: #2a2a2a;
+    border-top: 1px solid #444;
+    font-size: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.settings-panel label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.settings-panel input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.settings-panel select {
+    padding: 5px;
+    background: #333;
+    color: white;
+    border: 1px solid #666;
+    border-radius: 3px;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: white;
+    color: #333;
+    padding: 40px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.modal-content p {
+    margin-bottom: 20px;
+    color: #666;
+}
+
+.modal-content button {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.modal-content button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+}
+
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 18px;
+    }
+    
+    .controls {
+        gap: 5px;
+    }
+    
+    .control-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+}
+`;
+        }
+
+        function createSCORMAPI() {
+            return `function findSCORM2004API(win) {
+    for (let attempts = 0; win && attempts < 500; attempts++) {
+        try {
+            if (win.API_1484_11) return win.API_1484_11;
+            if (win.parent === win) break;
+            win = win.parent;
+        } catch (error) {
+            break;
+        }
+    }
+    return null;
+}
+
+window.SCORMAdapter = {
+    api: null,
+    initialized: false,
+    completionStatus: 'not attempted',
+
+    initialize: function() {
+        if (this.initialized) return true;
+        this.api = findSCORM2004API(window);
+        if (!this.api) return false;
+        this.initialized = this.api.Initialize('') === 'true';
+        return this.initialized;
+    },
+
+    setValue: function(key, value) {
+        if (!this.initialized) return false;
+        return this.api.SetValue(key, String(value)) === 'true';
+    },
+
+    setLocation: function(slide) {
+        return this.setValue('cmi.location', slide);
+    },
+
+    setScore: function(score) {
+        return this.setValue('cmi.score.raw', score);
+    },
+
+    setCompletionStatus: function(status) {
+        this.completionStatus = status;
+        return this.setValue('cmi.completion_status', status);
+    },
+
+    commit: function() {
+        return this.initialized && this.api.Commit('') === 'true';
+    },
+
+    getCompletionStatus: function() {
+        if (this.initialized) return this.api.GetValue('cmi.completion_status');
+        return this.completionStatus;
+    },
+
+    finish: function() {
+        this.setCompletionStatus('completed');
+        this.commit();
+        if (this.initialized) {
+            this.api.Terminate('');
+            this.initialized = false;
+        }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    window.SCORMAdapter.initialize();
+});
+`;
+        }
+
+        function createPlayerScript() {
+            return `let slideIndex = 0;
+let slides = [];
+let isPlaying = false;
+let playbackSpeed = 1;
+let courseCompleted = false;
+let playTimer = null;
+let animationQueue = [];
+
+async function initializePlayer(pptxPath, config) {
+    try {
+        slides = Array.from({ length: config.slideCount }, (_, index) => index + 1);
+        if (!slides.length) throw new Error('Gói SCORM không có slide.');
+        document.getElementById('totalSlides').textContent = slides.length;
+        initializeUI(config);
+        if (window.SCORMAdapter) window.SCORMAdapter.initialize();
+        loadSlide(0);
+        if (config.autoPlay) document.getElementById('playBtn').click();
+    } catch (error) {
+        console.error('Error initializing player:', error);
+        document.getElementById('slide-canvas').innerHTML = '<p>Lỗi: ' + error.message + '</p>';
+    }
+}
+
+function loadSlide(index) {
+    if (index < 0 || index >= slides.length) return;
+    
+    slideIndex = index;
+    document.getElementById('currentSlide').textContent = slideIndex + 1;
+    
+    const progress = ((slideIndex + 1) / slides.length) * 100;
+    document.getElementById('progressBar').style.width = progress + '%';
+    
+    renderSlide(slideIndex);
+    
+    // Update button states
+    document.getElementById('prevBtn').disabled = slideIndex === 0;
+    document.getElementById('nextBtn').disabled = slideIndex === slides.length - 1;
+
+    if (window.SCORMAdapter) {
+        window.SCORMAdapter.setLocation(slideIndex + 1);
+        window.SCORMAdapter.setScore(Math.round(progress));
+    }
+
+    if (slideIndex === slides.length - 1 && !courseCompleted) {
+        courseCompleted = true;
+        isPlaying = false;
+        clearTimeout(playTimer);
+        document.getElementById('playBtn').textContent = '▶ Phát';
+        document.getElementById('completion-modal').classList.remove('hidden');
+        if (window.SCORMAdapter) window.SCORMAdapter.finish();
+    }
+}
+
+function renderSlide(index) {
+    const slideImage = document.getElementById('slideImage');
+    slideImage.src = 'slides/slide-' + String(index + 1).padStart(3, '0') + '.png';
+    slideImage.alt = 'Slide ' + (index + 1);
+}
+
+function initializeUI(config) {
+    // Previous button
+    document.getElementById('prevBtn').addEventListener('click', () => {
+        if (slideIndex > 0) loadSlide(slideIndex - 1);
+    });
+    
+    // Next button
+    document.getElementById('nextBtn').addEventListener('click', () => {
+        if (slideIndex < slides.length - 1) loadSlide(slideIndex + 1);
+    });
+    
+    // Play button
+    document.getElementById('playBtn').addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        document.getElementById('playBtn').textContent = isPlaying ? '⏸ Tạm dừng' : '▶ Phát';
+        
+        if (isPlaying) {
+            playNextSlide(config.slideTime * 1000 / playbackSpeed);
+        } else {
+            clearTimeout(playTimer);
+        }
+    });
+    
+    // Fullscreen button
+    document.getElementById('fullscreenBtn').addEventListener('click', () => {
+        const container = document.querySelector('.scorm-container');
+        if (container.requestFullscreen) {
+            container.requestFullscreen();
+        }
+    });
+    
+    // Speed control
+    document.getElementById('speedControl').addEventListener('change', (e) => {
+        playbackSpeed = parseFloat(e.target.value) || 1;
+        if (isPlaying) {
+            clearTimeout(playTimer);
+            playNextSlide(config.slideTime * 1000 / playbackSpeed);
+        }
+    });
+    
+    // Auto play toggle
+    document.getElementById('autoPlayToggle').addEventListener('change', (e) => {
+        if (e.target.checked && slideIndex === 0) {
+            document.getElementById('playBtn').click();
+        }
+    });
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') document.getElementById('prevBtn').click();
+        if (e.key === 'ArrowRight') document.getElementById('nextBtn').click();
+        if (e.key === ' ') document.getElementById('playBtn').click();
+    });
+}
+
+function playNextSlide(delay) {
+    if (!isPlaying) return;
+    
+    playTimer = setTimeout(() => {
+        if (slideIndex < slides.length - 1) {
+            loadSlide(slideIndex + 1);
+            playNextSlide(delay);
+        } else {
+            isPlaying = false;
+            document.getElementById('playBtn').textContent = '▶ Phát';
+        }
+    }, delay);
+}
+`;
+        }
+
+        function escapeXml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        */
+    </script>
+</body>
+</html>

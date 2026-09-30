@@ -39,6 +39,11 @@ a{color:inherit;text-decoration:none}
 .side .foot{margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding-top:14px}
 .side .foot a{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#9FC7C9;padding:7px 9px;border-radius:8px}
 .side .foot a:hover{background:rgba(255,255,255,.07);color:#fff}
+.side .visits{padding:10px 9px 2px;border-top:1px solid rgba(255,255,255,.1);margin-top:8px}
+.side .visits-title{font-size:11px;font-weight:700;color:#D7E6E6}
+.side .visits-note{font-size:9px;color:#7FA5A7;margin:2px 0 7px}
+.side .visits-row{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:#9FC7C9;padding:2px 0}
+.side .visits-row b{font-family:var(--m);font-size:10.5px;color:#fff;font-weight:600}
 .side .foot .v{font-family:var(--m);font-size:10px;color:#5F8689;margin-top:9px;padding:0 9px}
 
 /* ---------- Main ---------- */
@@ -125,6 +130,12 @@ a{color:inherit;text-decoration:none}
         <!-- <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Thêm công cụ mới -->
       </a>
+      <div class="visits" aria-label="Thống kê lượt truy cập">
+        <div class="visits-title">Thống kê lượt truy cập:</div>
+        <div class="visits-note">Ghi nhận trên trình duyệt này</div>
+        <div class="visits-row"><span>Tháng này:</span><b id="monthVisits" aria-live="polite">-</b></div>
+        <div class="visits-row"><span>Hôm nay:</span><b id="todayVisits" aria-live="polite">-</b></div>
+      </div>
       <div class="v">v1.0</div>
     </div>
   </aside>
@@ -180,7 +191,7 @@ const TOOLS = [
     code:"SCORM",
     name:"Soạn bài giảng → SCORM",
     role:"Trình soạn bài · nhiều tuần",
-    desc:"Soạn nội dung theo tuần, nhập dữ liệu từ Excel và xuất gói SCORM đưa lên LMS/Moodle.",
+    desc:"Soạn nội dung theo tuần, nhập dữ liệu từ Excel và xuất gói SCORM đưa lên LMS.",
     tags:["Nhập Excel","Nhiều tuần","Xuất SCORM"],
     file:"CREATE_LESSON.html",
     accent:"teal", cat:"content", status:"ready",
@@ -190,7 +201,7 @@ const TOOLS = [
     code:"QUIZ",
     name:"Tạo ngân hàng câu hỏi E-VLUTE",
     role:"Ngân hàng câu hỏi · XML",
-    desc:"Tạo nhiều loại câu hỏi (trắc nghiệm, đúng/sai, điền khuyết, nối cặp) và xuất XML chuẩn E-VLUTE tương thích Moodle.",
+    desc:"Tạo nhiều loại câu hỏi (trắc nghiệm, đúng/sai, điền khuyết, nối cặp) và xuất XML chuẩn E-VLUTE.",
     tags:["6 loại câu hỏi","Nhập Word/Excel","Xuất XML"],
     file:"CREATE_QUIZ.html",
     accent:"clay", cat:"assess", status:"ready",
@@ -214,6 +225,16 @@ const TOOLS = [
     tags:["Nhập HTML","SCORM 1.2","Xuất ZIP"],
     file:"HTML-SCROM.html",
     accent:"amber", cat:"content", status:"ready",
+    icon:'<path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h5M8 16h8"/>'
+  },
+  {
+    code:"PPTX",
+    name:"Chuyển PowerPoint thành SCORM",
+    role:"Đóng gói bài giảng · SCORM 1.2",
+    desc:"Tải file PowerPoint lên, xem trước các slide và xuất gói SCORM.",
+    tags:["Nhập PPTX","Xem trước slide","Xuất SCORM"],
+    file:"pptx-to-scorm-converter.html",
+    accent:"clay", cat:"content", status:"ready",
     icon:'<path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h5M8 16h8"/>'
   },
 ];
@@ -279,6 +300,25 @@ function render(){
   empty.style.display=list.length?'none':'block';
 }
 
+function updateVisitStats(){
+  const now=new Date();
+  const dateKey=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+  const monthKey=dateKey.slice(0,7);
+  try{
+    const todayStorageKey='vlute-visits-day-'+dateKey;
+    const monthStorageKey='vlute-visits-month-'+monthKey;
+    const todayCount=(Number(localStorage.getItem(todayStorageKey))||0)+1;
+    const monthCount=(Number(localStorage.getItem(monthStorageKey))||0)+1;
+    localStorage.setItem(todayStorageKey,String(todayCount));
+    localStorage.setItem(monthStorageKey,String(monthCount));
+    document.getElementById('todayVisits').textContent=todayCount.toLocaleString('vi-VN');
+    document.getElementById('monthVisits').textContent=monthCount.toLocaleString('vi-VN');
+  }catch(error){
+    document.getElementById('todayVisits').textContent='-';
+    document.getElementById('monthVisits').textContent='-';
+  }
+}
+
 document.getElementById('q').addEventListener('input',e=>{term=e.target.value.trim().toLowerCase();render();});
 document.getElementById('addLink').addEventListener('click',e=>{
   e.preventDefault();
@@ -288,6 +328,7 @@ document.getElementById('addLink').addEventListener('click',e=>{
 const total=TOOLS.length;
 document.getElementById('count').textContent=total;
 document.getElementById('mCount').textContent=total+' công cụ';
+updateVisitStats();
 buildSidebar();
 render();
 </script>
